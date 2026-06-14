@@ -558,11 +558,11 @@ function renderScatterPlot(data) {
 
   // Label nama — digeser supaya tidak numpuk
   const labelOffset = {
-    'Mountain Bikes':    { dx: 14, dy: 4  },
-    'Road Bikes':        { dx: 14, dy: 4  },
-    'Caps':              { dx: 14, dy: -8 },
-    'Bottles and Cages': { dx: 14, dy: 8  },
-    'Tires and Tubes':   { dx: 14, dy: 18 }
+    'Mountain Bikes':    { dx: 18, dy: 4  },
+    'Road Bikes':        { dx: 18, dy: 4  },
+    'Caps':              { dx: 18, dy: -8 },
+    'Bottles and Cages': { dx: 18, dy: 8  },
+    'Tires and Tubes':   { dx: 18, dy: 18 }
   };
 
   svg.selectAll('.dot-label')
