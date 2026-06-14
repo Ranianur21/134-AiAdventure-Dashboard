@@ -444,11 +444,10 @@ function renderCategoryChart(data) {
 
 // ── CHART 2: SCATTER PLOT SALES VS PROFIT ───────────────────
 function renderScatterPlot(data) {
-  const m = { top: 20, right: 120, bottom: 50, left: 80 };
-  const w = 460 - m.left - m.right;
-  const h = 280 - m.top  - m.bottom;
+  const m = { top: 20, right: 140, bottom: 50, left: 80 };
+  const w = 500 - m.left - m.right;
+  const h = 300 - m.top  - m.bottom;
 
-  // Agregasi per subkategori
   const bySubcat = d3.rollups(data,
     v => ({
       sales:  d3.sum(v, d => d.sales),
@@ -462,9 +461,6 @@ function renderScatterPlot(data) {
     margin: v.sales > 0 ? (v.profit / v.sales * 100).toFixed(1) : 0
   }));
 
-  // Debug — cek nilai asli di console
-  console.table(bySubcat);
-
   const svg = d3.select('#chart-scatter')
     .append('svg')
     .attr('width',  w + m.left + m.right)
@@ -472,41 +468,46 @@ function renderScatterPlot(data) {
     .append('g')
     .attr('transform', `translate(${m.left},${m.top})`);
 
-  const minProfit = d3.min(bySubcat, d => d.profit);
-  const maxProfit = d3.max(bySubcat, d => d.profit);
-  const minSales  = 0;
-  const maxSales  = d3.max(bySubcat, d => d.sales);
-
-  const x = d3.scaleLinear()
-    .domain([minSales, maxSales * 1.1])
+  // Pakai skala log supaya titik kecil tetap kelihatan
+  const x = d3.scaleLog()
+    .domain([
+      d3.min(bySubcat, d => d.sales) * 0.5,
+      d3.max(bySubcat, d => d.sales) * 1.5
+    ])
     .range([0, w]);
 
-  // Pastikan domain Y mencakup nilai negatif
-  const yMin = minProfit < 0 ? minProfit * 1.2 : minProfit * 0.8;
-  const yMax = maxProfit * 1.2;
+  const yMin = d3.min(bySubcat, d => d.profit);
+  const yMax = d3.max(bySubcat, d => d.profit);
 
   const y = d3.scaleLinear()
-    .domain([yMin, yMax])
+    .domain([yMin < 0 ? yMin * 1.2 : yMin * 0.5, yMax * 1.2])
     .range([h, 0]);
 
-  // Garis break-even profit = 0
-  if (yMin < 0) {
-    svg.append('line')
-      .attr('x1', 0).attr('x2', w)
-      .attr('y1', y(0)).attr('y2', y(0))
-      .attr('stroke', '#dc2626')
-      .attr('stroke-dasharray', '5,3')
-      .attr('stroke-width', 1.5)
-      .attr('opacity', 0.6);
+  // Garis break-even
+  svg.append('line')
+    .attr('x1', 0).attr('x2', w)
+    .attr('y1', y(0)).attr('y2', y(0))
+    .attr('stroke', '#dc2626')
+    .attr('stroke-dasharray', '5,3')
+    .attr('stroke-width', 1.5)
+    .attr('opacity', 0.5);
 
-    svg.append('text')
-      .attr('x', w - 4)
-      .attr('y', y(0) - 5)
-      .attr('text-anchor', 'end')
-      .attr('font-size', 10)
-      .attr('fill', '#dc2626')
-      .text('break-even (profit = 0)');
-  }
+  svg.append('text')
+    .attr('x', w)
+    .attr('y', y(0) - 5)
+    .attr('text-anchor', 'end')
+    .attr('font-size', 10)
+    .attr('fill', '#dc2626')
+    .text('break-even');
+
+  // Warna per kategori
+  const colorMap = {
+    'Mountain Bikes':     '#2563eb',
+    'Road Bikes':         '#7c3aed',
+    'Caps':               '#16a34a',
+    'Bottles and Cages':  '#d97706',
+    'Tires and Tubes':    '#0891b2'
+  };
 
   // Titik scatter
   const circles = svg.selectAll('circle')
@@ -514,18 +515,17 @@ function renderScatterPlot(data) {
     .enter().append('circle')
     .attr('cx', d => x(d.sales))
     .attr('cy', d => y(d.profit))
-    .attr('r', 12)
-    .attr('fill',    d => d.profit < 0 ? '#dc2626' : '#16a34a')
-    .attr('opacity', 0.8)
-    .attr('stroke',  '#fff')
+    .attr('r', 10)
+    .attr('fill',         d => colorMap[d.name] || '#94a3b8')
+    .attr('opacity', 0.85)
+    .attr('stroke', '#fff')
     .attr('stroke-width', 2);
 
-  // Tooltip hover
-  const tooltip = d3.select('body').select('#scatter-tooltip').empty()
-    ? d3.select('body').append('div').attr('id', 'scatter-tooltip')
-    : d3.select('#scatter-tooltip');
-
-  tooltip
+  // Tooltip
+  d3.select('#scatter-tooltip').remove();
+  const tooltip = d3.select('body')
+    .append('div')
+    .attr('id', 'scatter-tooltip')
     .style('position', 'absolute')
     .style('background', '#ffffff')
     .style('border', '1px solid #e2e5ea')
@@ -534,7 +534,8 @@ function renderScatterPlot(data) {
     .style('font-size', '12px')
     .style('pointer-events', 'none')
     .style('opacity', 0)
-    .style('line-height', '1.8');
+    .style('line-height', '1.8')
+    .style('box-shadow', '0 4px 12px rgba(0,0,0,0.1)');
 
   circles
     .on('mousemove', function(event, d) {
@@ -542,9 +543,9 @@ function renderScatterPlot(data) {
         .style('opacity', 1)
         .html(`
           <div style="font-weight:600;margin-bottom:4px;color:#1a1d23">${d.name}</div>
-          <div style="color:#2563eb">📈 Sales &nbsp;&nbsp; $${(d.sales/1000).toFixed(0)}K</div>
+          <div style="color:#2563eb">📈 Sales &nbsp;&nbsp;$${(d.sales/1000).toFixed(0)}K</div>
           <div style="color:${d.profit < 0 ? '#dc2626' : '#16a34a'}">
-            💰 Profit &nbsp; $${(d.profit/1000).toFixed(0)}K
+            💰 Profit &nbsp;$${(d.profit/1000).toFixed(0)}K
           </div>
           <div style="color:#6b7280;font-size:11px;margin-top:4px">
             Margin: ${d.margin}%
@@ -553,26 +554,33 @@ function renderScatterPlot(data) {
         .style('left', (event.pageX + 16) + 'px')
         .style('top',  (event.pageY - 40) + 'px');
     })
-    .on('mouseleave', function() {
-      tooltip.style('opacity', 0);
-    });
+    .on('mouseleave', () => tooltip.style('opacity', 0));
 
-  // Label nama subkategori
+  // Label nama — digeser supaya tidak numpuk
+  const labelOffset = {
+    'Mountain Bikes':    { dx: 14, dy: 4  },
+    'Road Bikes':        { dx: 14, dy: 4  },
+    'Caps':              { dx: 14, dy: -8 },
+    'Bottles and Cages': { dx: 14, dy: 8  },
+    'Tires and Tubes':   { dx: 14, dy: 18 }
+  };
+
   svg.selectAll('.dot-label')
     .data(bySubcat)
     .enter().append('text')
-    .attr('x', d => x(d.sales) + 15)
-    .attr('y', d => y(d.profit) + 4)
+    .attr('class', 'dot-label')
+    .attr('x', d => x(d.sales) + (labelOffset[d.name]?.dx || 14))
+    .attr('y', d => y(d.profit) + (labelOffset[d.name]?.dy || 4))
     .attr('font-size', 10)
     .attr('fill', '#374151')
     .text(d => d.name);
 
-  // Axis
+  // Axis X — format log scale
   svg.append('g')
     .attr('class', 'axis')
     .attr('transform', `translate(0,${h})`)
-    .call(d3.axisBottom(x).ticks(4)
-      .tickFormat(d => `$${(d/1000000).toFixed(1)}M`));
+    .call(d3.axisBottom(x)
+      .ticks(5, d => `$${(d/1000).toFixed(0)}K`));
 
   svg.append('g')
     .attr('class', 'axis')
@@ -584,7 +592,7 @@ function renderScatterPlot(data) {
     .attr('x', w / 2).attr('y', h + 42)
     .attr('text-anchor', 'middle')
     .attr('font-size', 11).attr('fill', '#6b7280')
-    .text('Total Sales');
+    .text('Total Sales (log scale)');
 
   svg.append('text')
     .attr('transform', 'rotate(-90)')
@@ -592,6 +600,22 @@ function renderScatterPlot(data) {
     .attr('text-anchor', 'middle')
     .attr('font-size', 11).attr('fill', '#6b7280')
     .text('Total Profit');
+
+  // Legend
+  const legend = svg.append('g')
+    .attr('transform', `translate(${w + 10}, 0)`);
+
+  bySubcat.forEach((d, i) => {
+    legend.append('circle')
+      .attr('cx', 6).attr('cy', i * 20)
+      .attr('r', 5)
+      .attr('fill', colorMap[d.name] || '#94a3b8');
+    legend.append('text')
+      .attr('x', 14).attr('y', i * 20 + 4)
+      .attr('font-size', 10)
+      .attr('fill', '#374151')
+      .text(d.name);
+  });
 }
 
 // ── CHART 3: LINE CHART TREN BULANAN ────────────────────────
