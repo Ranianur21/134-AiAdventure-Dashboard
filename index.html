@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Dashboard — Adventure Works</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+
+  <!-- TAB BAR -->
+  <nav class="tab-bar">
+    <div class="tab-brand">Adventure Works</div>
+    <button class="tab-btn active" id="tab-ai" onclick="switchTab('ai')">
+      🤖 AI Dashboard
+    </button>
+    <button class="tab-btn" id="tab-tableau" onclick="switchTab('tableau')">
+      📊 Tableau
+    </button>
+  </nav>
+
+  <!-- PANEL TABLEAU -->
+  <div id="panel-tableau" style="display:none">
+
+    <div class="tableau-embed-wrap">
+
+      <div class="tableau-embed-header">
+        <div>
+          <h2>Dashboard Tableau Public</h2>
+          <p>Visualisasi interaktif — filter, drill-down, tooltip tersedia.</p>
+        </div>
+
+        <a
+          class="tableau-link"
+          href="https://public.tableau.com/views/SalesDashboard_17808441400020/Dashboard1"
+          target="_blank">
+          Buka Fullscreen ↗
+        </a>
+      </div>
+
+      <div class="tableau-iframe-container">
+
+        <iframe
+          id="tableau-iframe"
+          src="https://public.tableau.com/views/SalesDashboard_17808441400020/Dashboard1?:showVizHome=no"
+          width="70%"
+          height="900"
+          frameborder="0"
+          allowfullscreen>
+        </iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL AI DASHBOARD -->
+  <div id="panel-ai">
+
+    <!-- ── ZONA 1: SETUP ── -->
+    <section class="zone zone-setup">
+      <div class="zone-inner">
+        <div class="zone-kicker">Adventure Works Analytics · AI-Generated</div>
+        <h1 id="narrative-title">Memuat analisis data...</h1>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label>Category</label>
+            <select id="filter-category" onchange="applyFilters()">
+              <option value="">Semua</option>
+              <option>Bikes</option>
+              <option>Clothing</option>
+              <option>Accessories</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Territory</label>
+            <select id="filter-territory" onchange="applyFilters()">
+              <option value="">Semua</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Segment</label>
+            <select id="filter-segment" onchange="applyFilters()">
+              <option value="">Semua</option>
+              <option>Shop</option>
+              <option>Individu</option>
+            </select>
+          </div>
+          <button class="btn-reset" onclick="resetFilters()">↺ Reset</button>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-row" id="kpi-cards"></div>
+
+        <p id="setup-text" class="zone-desc"></p>
+      </div>
+    </section>
+
+    <!-- ── ZONA 2: CONFLICT ── -->
+    <section class="zone zone-conflict">
+      <div class="zone-inner">
+        <div class="zone-kicker conflict">Conflict · Anomali & Visualisasi</div>
+        <p id="conflict-text" class="zone-desc"></p>
+
+        <!-- Alert Panel -->
+        <div class="alert-panel" id="alert-panel">
+          <div class="alert-panel-header">
+            <div class="aph-left">
+              <span>🚨</span>
+              <span class="alert-title">Anomali Terdeteksi</span>
+              <span class="severity-badge severe" id="badge-severe">0 Kritis</span>
+              <span class="severity-badge warning" id="badge-warning">0 Peringatan</span>
+            </div>
+            <button id="btn-narrate" onclick="requestAlertNarration()">
+              🤖 Narasi AI
+            </button>
+          </div>
+          <div class="alert-tabs">
+            <button class="alert-tab active" onclick="switchAlertTab('raw', this)">Data Anomali</button>
+            <button class="alert-tab" onclick="switchAlertTab('ai', this)">Narasi AI</button>
+          </div>
+          <div id="alert-tab-raw" class="alert-tab-content"></div>
+          <div id="alert-tab-ai" class="alert-tab-content" style="display:none">
+            <div id="ai-narration-output">
+              <p class="placeholder-text">Klik "Narasi AI" untuk penjelasan dari AI.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+
+          <!-- Baris 1: Sales by Category + Scatter -->
+          <div class="chart-card">
+            <div class="chart-card-title" id="title-category">Sales per Category</div>
+            <div id="chart-category"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-title">Hubungan Sales vs Profit per SubCategory</div>
+            <div id="chart-scatter"></div>
+          </div>
+
+          <!-- Baris 2: Trend line (full width) -->
+          <div class="chart-card chart-full">
+            <div class="chart-card-title" id="title-trend">Tren Sales & Profit Bulanan</div>
+            <div id="chart-trend"></div>
+          </div>
+
+          <!-- Baris 3: Territory + Top Products -->
+          <div class="chart-card">
+            <div class="chart-card-title">Profitability per Territory</div>
+            <div id="chart-territory"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-title">Top 10 Produk by Sales</div>
+            <div id="chart-top-products"></div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ZONA 3: RESOLUTION ── -->
+    <section class="zone zone-resolution">
+      <div class="zone-inner">
+        <div class="zone-kicker resolution">Resolution · Insight & Rekomendasi</div>
+        <p id="resolution-text" class="zone-desc"></p>
+
+        <div class="resolution-grid">
+
+          <!-- AI Insight Panel -->
+          <div class="insight-card">
+            <div class="insight-header">
+              <h3>🤖 AI Insight</h3>
+              <span class="model-badge">llama-3.1-8b-instant</span>
+            </div>
+            <div id="insight-output" class="insight-output">
+              <p class="placeholder-text">Memuat insight dari AI...</p>
+            </div>
+            <div class="insight-input-wrap">
+              <textarea id="custom-question"
+                placeholder="Tanya sesuatu tentang data ini..."
+                rows="2"></textarea>
+              <button id="btn-insight" onclick="requestInsight()">
+                Kirim →
+              </button>
+            </div>
+            <div class="quick-questions">
+              <p class="qq-label">Pertanyaan cepat:</p>
+              <button class="qbtn" onclick="quickAsk('Mengapa Bikes punya revenue besar tapi margin rendah?')">Kenapa Bikes rugi?</button>
+              <button class="qbtn" onclick="quickAsk('Territory mana yang paling menguntungkan untuk ekspansi?')">Territory terbaik?</button>
+              <button class="qbtn" onclick="quickAsk('Rekomendasi produk apa yang harus diprioritaskan?')">Prioritas produk?</button>
+            </div>
+          </div>
+
+          <!-- Summary Table -->
+          <div class="chart-card">
+            <div class="chart-card-title">Ringkasan Performa per Kategori</div>
+            <div id="category-table"></div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /panel-ai -->
+
+  <footer class="dash-footer">
+    <span>Dataset: Adventure Works Sales 2001–2004</span>
+    <span>Powered by D3.js + Groq AI</span>
+  </footer>
+
+  <!-- Urutan script WAJIB -->
+  <script src="config.js"></script>
+  <script src="aiInsight.js"></script>
+  <script src="anomalyDetector.js"></script>
+  <script src="storyEngine.js"></script>
+  <script src="app.js"></script>
+
+  <script>
+    function switchTab(tab) {
+
+      document
+        .getElementById('tab-ai')
+        .classList.toggle('active', tab === 'ai');
+
+      document
+        .getElementById('tab-tableau')
+        .classList.toggle('active', tab === 'tableau');
+
+      document
+        .getElementById('panel-ai')
+        .style.display = tab === 'ai' ? 'block' : 'none';
+
+      document
+        .getElementById('panel-tableau')    .style.display = tab === 'tableau' ? 'block' : 'none';
+      }
+ </script>
+
+</body>
+</html>
