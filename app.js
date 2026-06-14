@@ -444,11 +444,10 @@ function renderCategoryChart(data) {
 
 // ── CHART 2: SCATTER PLOT SALES VS PROFIT ───────────────────
 function renderScatterPlot(data) {
-  const m = { top: 30, right: 40, bottom: 50, left: 80 };
-  const w = 460 - m.left - m.right;
+  const m = { top: 20, right: 150, bottom: 50, left: 80 };
+  const w = 500 - m.left - m.right;
   const h = 300 - m.top  - m.bottom;
 
-  // Agregasi per subkategori
   const bySubcat = d3.rollups(data,
     v => ({
       sales:  d3.sum(v, d => d.sales),
@@ -459,16 +458,8 @@ function renderScatterPlot(data) {
     name,
     sales:  v.sales,
     profit: v.profit,
-    margin: v.sales > 0 ? +(v.profit / v.sales * 100).toFixed(1) : 0,
-    category: data.find(d => d.subcat === name)?.category || ''
+    margin: v.sales > 0 ? +(v.profit / v.sales * 100).toFixed(1) : 0
   }));
-
-  // Warna per kategori
-  const colorMap = {
-    'Bikes':       '#2563eb',
-    'Clothing':    '#dc2626',
-    'Accessories': '#d97706'
-  };
 
   const svg = d3.select('#chart-scatter')
     .append('svg')
@@ -477,23 +468,15 @@ function renderScatterPlot(data) {
     .append('g')
     .attr('transform', `translate(${m.left},${m.top})`);
 
-  // Scale X — sales
   const x = d3.scaleLinear()
     .domain([0, d3.max(bySubcat, d => d.sales) * 1.15])
     .range([0, w]);
 
-  // Scale Y — profit
   const yMin = d3.min(bySubcat, d => d.profit);
   const yMax = d3.max(bySubcat, d => d.profit);
   const y = d3.scaleLinear()
     .domain([yMin < 0 ? yMin * 1.3 : 0, yMax * 1.2])
     .range([h, 0]);
-
-  // Scale radius — margin % (min 8, max 28)
-  const absMargins = bySubcat.map(d => Math.abs(d.margin));
-  const r = d3.scaleSqrt()
-    .domain([0, d3.max(absMargins)])
-    .range([8, 28]);
 
   // Garis break-even
   svg.append('line')
@@ -526,80 +509,62 @@ function renderScatterPlot(data) {
     .style('box-shadow', '0 4px 12px rgba(0,0,0,0.1)')
     .style('z-index', 999);
 
-  // Bubble
-  const bubbles = svg.selectAll('.bubble')
+  // Titik scatter — hijau kalau profit positif, merah kalau negatif
+  const circles = svg.selectAll('circle')
     .data(bySubcat)
     .enter().append('circle')
-    .attr('class', 'bubble')
     .attr('cx', d => x(d.sales))
     .attr('cy', d => y(d.profit))
-    .attr('r',  d => r(Math.abs(d.margin)))
-    .attr('fill',    d => colorMap[d.category] || '#94a3b8')
-    .attr('opacity', 0.75)
-    .attr('stroke',  d => colorMap[d.category] || '#94a3b8')
-    .attr('stroke-width', 1.5)
+    .attr('r', 10)
+    .attr('fill',    d => d.profit < 0 ? '#dc2626' : '#16a34a')
+    .attr('opacity', 0.8)
+    .attr('stroke',  '#fff')
+    .attr('stroke-width', 2)
     .style('cursor', 'pointer');
 
   // Tooltip hover
-  bubbles
+  circles
     .on('mousemove', function(event, d) {
-      d3.select(this).attr('opacity', 1);
+      d3.select(this).attr('opacity', 1).attr('r', 12);
       tooltip
         .style('opacity', 1)
         .html(`
-          <div style="font-weight:600;color:#1a1d23;margin-bottom:6px">
-            ${d.name}
-            <span style="font-weight:400;font-size:11px;color:#6b7280">
-              (${d.category})
-            </span>
-          </div>
-          <div style="color:#2563eb">
-            📈 Sales &nbsp;&nbsp; $${(d.sales/1000).toFixed(0)}K
-          </div>
+          <div style="font-weight:600;color:#1a1d23;margin-bottom:4px">${d.name}</div>
+          <div style="color:#2563eb">📈 Sales &nbsp;&nbsp; $${(d.sales/1000).toFixed(0)}K</div>
           <div style="color:${d.profit < 0 ? '#dc2626' : '#16a34a'}">
             💰 Profit &nbsp; $${(d.profit/1000).toFixed(0)}K
           </div>
-          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6">
-            <span style="font-size:11px;color:#6b7280">Margin </span>
-            <span style="font-weight:600;color:${d.margin < 0 ? '#dc2626' : d.margin < 20 ? '#d97706' : '#16a34a'}">
-              ${d.margin}%
-            </span>
-            <span style="font-size:10px;color:#9ca3af"> · ukuran bubble = margin</span>
+          <div style="font-size:11px;color:#6b7280;margin-top:4px">
+            Margin: ${d.margin}%
           </div>
         `)
         .style('left', (event.pageX + 16) + 'px')
         .style('top',  (event.pageY - 60) + 'px');
     })
     .on('mouseleave', function() {
-      d3.select(this).attr('opacity', 0.75);
+      d3.select(this).attr('opacity', 0.8).attr('r', 10);
       tooltip.style('opacity', 0);
     });
 
-  // Label nama di dalam / luar bubble
-  svg.selectAll('.bubble-label')
-    .data(bySubcat)
-    .enter().append('text')
-    .attr('class', 'bubble-label')
-    .attr('x', d => x(d.sales))
-    .attr('y', d => y(d.profit) - r(Math.abs(d.margin)) - 5)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', 10)
-    .attr('font-weight', '500')
-    .attr('fill', '#374151')
-    .text(d => d.name);
+  // Label nama — digeser biar tidak numpuk
+  // Bikes di kanan atas, accessories di kanan bawah karena profit kecil
+  const labelPos = {
+    'Mountain Bikes':    { dx:  14, dy:  4  },
+    'Road Bikes':        { dx:  14, dy:  4  },
+    'Caps':              { dx:  14, dy: -10 },
+    'Bottles and Cages': { dx:  14, dy:  4  },
+    'Tires and Tubes':   { dx:  14, dy:  16 }
+  };
 
-  // Margin % label di dalam bubble
-  svg.selectAll('.margin-label')
+  svg.selectAll('.dot-label')
     .data(bySubcat)
     .enter().append('text')
-    .attr('class', 'margin-label')
-    .attr('x', d => x(d.sales))
-    .attr('y', d => y(d.profit) + 4)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', 9)
-    .attr('font-weight', '600')
-    .attr('fill', '#ffffff')
-    .text(d => `${d.margin}%`);
+    .attr('class', 'dot-label')
+    .attr('x', d => x(d.sales) + (labelPos[d.name]?.dx || 14))
+    .attr('y', d => y(d.profit) + (labelPos[d.name]?.dy || 4))
+    .attr('font-size', 10)
+    .attr('fill', '#374151')
+    .text(d => `${d.name} (${d.margin}%)`);
 
   // Axis
   svg.append('g')
@@ -626,40 +591,6 @@ function renderScatterPlot(data) {
     .attr('text-anchor', 'middle')
     .attr('font-size', 11).attr('fill', '#6b7280')
     .text('Total Profit');
-
-  // Legend kategori — pojok kanan atas
-  const categories = ['Bikes', 'Clothing', 'Accessories'];
-  const lg = svg.append('g')
-    .attr('transform', `translate(${w - 110}, 0)`);
-
-  lg.append('rect')
-    .attr('x', -8).attr('y', -8)
-    .attr('width', 118).attr('height', categories.length * 20 + 16)
-    .attr('rx', 6)
-    .attr('fill', '#ffffff')
-    .attr('stroke', '#e2e5ea')
-    .attr('stroke-width', 0.5);
-
-  categories.forEach((cat, i) => {
-    lg.append('circle')
-      .attr('cx', 6).attr('cy', i * 20 + 6)
-      .attr('r', 6)
-      .attr('fill', colorMap[cat])
-      .attr('opacity', 0.8);
-    lg.append('text')
-      .attr('x', 16).attr('y', i * 20 + 10)
-      .attr('font-size', 10)
-      .attr('fill', '#374151')
-      .text(cat);
-  });
-
-  // Catatan ukuran bubble
-  svg.append('text')
-    .attr('x', w / 2).attr('y', -14)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', 9)
-    .attr('fill', '#9ca3af')
-    .text('Ukuran bubble = profit margin % · Warna = kategori · Hover untuk detail');
 }
 
 // ── CHART 3: LINE CHART TREN BULANAN ────────────────────────
