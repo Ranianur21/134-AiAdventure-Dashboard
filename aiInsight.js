@@ -39,34 +39,27 @@ Kategori margin terburuk: ${stats.worstCategory?.category} (${stats.worstCategor
 }
 
 async function callGroq(prompt) {
-  const res = await fetch(CONFIG.GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${CONFIG.GROQ_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: CONFIG.GROQ_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'Kamu adalah analis bisnis senior yang memberi insight singkat, praktis, dan langsung ke poin. Gunakan Bahasa Indonesia.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      max_tokens: 600,
-      temperature: 0.3
-    })
-  });
+
+  const res = await fetch(
+    "/.netlify/functions/groq",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        prompt
+      })
+    }
+  );
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Groq error: ${err.error?.message || res.status}`);
+    const errText = await res.text();
+    throw new Error(errText);
   }
+
   const data = await res.json();
+
   return data.choices[0].message.content;
 }
 
