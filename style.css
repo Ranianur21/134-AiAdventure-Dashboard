@@ -400,14 +400,17 @@ body {
 .qbtn:hover { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
 
 /* ── CATEGORY TABLE ── */
+
 #category-table {
   overflow-x: auto;
 }
+
 #category-table table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
+
 #category-table th {
   text-align: left;
   padding: 8px 10px;
@@ -418,14 +421,28 @@ body {
   letter-spacing: 0.5px;
   color: #6b7280;
 }
+
 #category-table td {
   padding: 8px 10px;
   border-bottom: 1px solid #f3f4f6;
-  color: #374151;
+  color: #374151; /* warna default */
 }
-#category-table tr:last-child td { border-bottom: none; }
-.profit-pos { color: #16a34a; font-weight: 600; }
-.profit-neg { color: #dc2626; font-weight: 600; }
+
+#category-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Profit positif */
+#category-table td.profit-pos {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+/* Profit negatif */
+#category-table td.profit-neg {
+  color: #dc2626;
+  font-weight: 700;
+}
 
 /* ── TABLEAU PANEL ── */
 .tableau-wrap {
